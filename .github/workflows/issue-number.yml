@@ -1,0 +1,83 @@
+name: Assign Backend Issue Number
+
+on:
+    issues:
+        types:
+            - opened
+
+# Important:
+# Only one issue-numbering workflow can run at a time.
+concurrency:
+    group: backend-issue-numbering
+    cancel-in-progress: false
+
+permissions:
+    issues: write
+
+jobs:
+    assign-number:
+        name: Assign BE Number
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Assign BE number
+              uses: actions/github-script@v9
+              with:
+                  script: |
+                      const issue = context.payload.issue;
+
+                      const owner = context.repo.owner;
+                      const repo = context.repo.repo;
+                      const issueNumber = issue.number;
+
+                      // Do nothing if the issue already has a BE number.
+                      if (/^BE-\d{3}\s—\s/.test(issue.title)) {
+                        console.log('Issue already has a BE number.');
+                        return;
+                      }
+
+                      // Get all issues, including closed issues.
+                      const issues = await github.paginate(
+                        github.rest.issues.listForRepo,
+                        {
+                          owner,
+                          repo,
+                          state: 'all',
+                          per_page: 100,
+                        }
+                      );
+
+                      // Find all existing BE-XXX numbers.
+                      const existingNumbers = issues
+                        .map((existingIssue) => {
+                          const match = existingIssue.title.match(/^BE-(\d{3})\s—\s/);
+
+                          if (!match) {
+                            return null;
+                          }
+
+                          return Number(match[1]);
+                        })
+                        .filter((number) => number !== null);
+
+                      // Start at BE-001 if no BE issues exist.
+                      const highestNumber =
+                        existingNumbers.length > 0
+                          ? Math.max(...existingNumbers)
+                          : 0;
+
+                      const nextNumber = highestNumber + 1;
+
+                      const beNumber = `BE-${String(nextNumber).padStart(3, '0')}`;
+
+                      // Update the issue title.
+                      await github.rest.issues.update({
+                        owner,
+                        repo,
+                        issue_number: issueNumber,
+                        title: `${beNumber} — ${issue.title}`,
+                      });
+
+                      console.log(
+                        `Assigned ${beNumber} to issue #${issueNumber}`
+                      );
