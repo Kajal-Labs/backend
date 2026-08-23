@@ -6,6 +6,10 @@ async function bootstrap() {
 
     app.enableShutdownHooks();
 
+    app.setGlobalPrefix('api', {
+        exclude: ['/'],
+    });
+
     await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
