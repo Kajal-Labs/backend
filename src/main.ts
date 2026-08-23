@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
-import { GlobalExceptionFilter } from './common/filters/index.js';
+import { GlobalExceptionFilter, PrismaExceptionFilter } from './common/filters/index.js';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -12,7 +12,7 @@ async function bootstrap() {
         exclude: ['/'],
     });
 
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new PrismaExceptionFilter(), new GlobalExceptionFilter());
 
     await app.listen(process.env.PORT ?? 3000);
 }
