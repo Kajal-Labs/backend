@@ -7,6 +7,8 @@ import { AppService } from './app.service.js';
 import { validateEnv } from './config/env/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 
+import { AuthModule } from './modules/auth/auth.module.js';
+
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -14,6 +16,8 @@ import { DatabaseModule } from './database/database.module.js';
             validate: validateEnv,
         }),
         DatabaseModule,
+
+        AuthModule,
     ],
     controllers: [AppController],
     providers: [AppService],
