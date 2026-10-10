@@ -9,17 +9,13 @@ export class RegistrationController {
     constructor(private readonly registrationService: RegistrationService) {}
 
     @Post()
-    async register(
+    register(
         @Body(new ZodValidationPipe(registerSchema))
         body: RegisterInput,
     ) {
-        // TODO:
-        // 1. Receive and validate registration data.
-        // 2. Pass validated data to RegistrationService.
-        // 3. Return the service response.
-        //
-        // Do NOT add business logic here.
-        // Do NOT access the database directly from the controller.
+        // Receive and validate registration data.
+        // Delegate registration logic to RegistrationService.
+        // Do not access the database from the controller.
 
         return this.registrationService.register(body);
     }

@@ -9,17 +9,13 @@ export class LoginController {
     constructor(private readonly loginService: LoginService) {}
 
     @Post()
-    async login(
+    login(
         @Body(new ZodValidationPipe(loginSchema))
         body: LoginInput,
     ) {
-        // TODO:
-        // 1. Receive and validate login credentials.
-        // 2. Pass the validated data to LoginService.
-        // 3. Return the service response.
-        //
-        // Do NOT add authentication/business logic here.
-        // Do NOT access the database directly from the controller.
+        // Receive and validate login credentials.
+        // Delegate authentication logic to LoginService.
+        // Do not access the database from the controller.
 
         return this.loginService.login(body);
     }
