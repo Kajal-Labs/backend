@@ -6,6 +6,7 @@ import {
     HttpStatus,
     Logger,
 } from '@nestjs/common';
+
 import type { Response } from 'express';
 import type { ApiErrorResponse } from '../types/api-response.types.js';
 
@@ -21,30 +22,38 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             const exceptionResponse = exception.getResponse();
 
             let message = 'Request failed';
+            let details: unknown[] | undefined;
 
             if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse;
-            } else if (
-                typeof exceptionResponse === 'object' &&
-                exceptionResponse !== null &&
-                'message' in exceptionResponse
-            ) {
-                const responseMessage = (
-                    exceptionResponse as {
-                        message?: string | string[];
-                    }
-                ).message;
+            } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+                const body = exceptionResponse as Record<string, unknown>;
 
-                message = Array.isArray(responseMessage)
-                    ? responseMessage.join(', ')
-                    : (responseMessage ?? 'Request failed');
+                const responseMessage = body.message;
+
+                if (typeof responseMessage === 'string') {
+                    message = responseMessage;
+                } else if (Array.isArray(responseMessage)) {
+                    message = responseMessage.join(', ');
+                }
+
+                if (Array.isArray(body.details)) {
+                    details = body.details;
+                }
             }
 
             const errorResponse: ApiErrorResponse = {
                 success: false,
                 error: {
-                    code: this.getErrorCode(status),
+                    code:
+                        exceptionResponse !== null &&
+                        typeof exceptionResponse === 'object' &&
+                        'code' in exceptionResponse &&
+                        typeof exceptionResponse.code === 'string'
+                            ? exceptionResponse.code
+                            : this.getErrorCode(status),
                     message,
+                    ...(details ? { details } : {}),
                 },
             };
 
@@ -52,7 +61,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             return;
         }
 
-        this.logger.error(exception);
+        this.logger.error(
+            'Unhandled exception',
+            exception instanceof Error ? exception.stack : String(exception),
+        );
 
         const errorResponse: ApiErrorResponse = {
             success: false,

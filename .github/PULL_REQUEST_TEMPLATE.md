@@ -17,15 +17,16 @@
 -
 -
 
-## Testing
-
-- [ ] Tests added/updated where needed
-- [ ] Existing tests pass
-- [ ] Manually tested locally
-
 ## Related Issue
 
-<!-- Example: Closes #123 -->
+Closes: <!-- Example: Closes #123 -->
+
+## Dependencies
+
+- [ ] No dependencies
+- [ ] Depends on another PR or issue (link below)
+
+Dependency links: <!-- Add #issue-number or #PR-number -->
 
 ## Checklist
 

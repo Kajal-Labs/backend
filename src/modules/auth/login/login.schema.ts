@@ -1,20 +1,17 @@
 import { z } from 'zod';
 
-// TODO:
-// Define the request validation schema for login.
-//
-// Expected fields:
-// - email
-// - password
-//
-// Add only request validation rules here.
-// Do NOT add authentication or business logic.
+export const loginSchema = z
+    .object({
+        email: z
+            .string()
+            .trim()
+            .min(1, 'Email is required')
+            .max(254, 'Email is too long')
+            .email('Enter a valid email address')
+            .transform((email) => email.toLowerCase()),
 
-export const loginSchema = z.object({
-    // TODO: Add email validation.
-    // email: ...
-    // TODO: Add password validation.
-    // password: ...
-});
+        password: z.string().min(1, 'Password is required').max(128, 'Password is too long'),
+    })
+    .strict();
 
 export type LoginInput = z.infer<typeof loginSchema>;
