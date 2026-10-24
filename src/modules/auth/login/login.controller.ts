@@ -13,10 +13,6 @@ export class LoginController {
         @Body(new ZodValidationPipe(loginSchema))
         body: LoginInput,
     ) {
-        // Receive and validate login credentials.
-        // Delegate authentication logic to LoginService.
-        // Do not access the database from the controller.
-
         return this.loginService.login(body);
     }
 }

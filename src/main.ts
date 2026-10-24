@@ -3,6 +3,8 @@ import { AppModule } from './app.module.js';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter, PrismaExceptionFilter } from './common/filters/index.js';
 
+import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor.js';
+
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
@@ -12,6 +14,7 @@ async function bootstrap() {
         exclude: ['/'],
     });
 
+    app.useGlobalInterceptors(new ApiResponseInterceptor());
     app.useGlobalFilters(new PrismaExceptionFilter(), new GlobalExceptionFilter());
 
     const config = new DocumentBuilder()
