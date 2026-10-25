@@ -1,0 +1,30 @@
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  UNKNOWN
+}
+
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  ipAddress  String?    @map("ip_address")
+  userAgent  String?    @map("user_agent")
+  deviceName String?    @map("device_name")
+  deviceType DeviceType @default(UNKNOWN) @map("device_type")
+
+  isActive     Boolean   @default(true) @map("is_active")
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastActiveAt DateTime  @default(now()) @map("last_active_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([expiresAt])
+  @@map("sessions")
+}
