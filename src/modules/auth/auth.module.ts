@@ -10,12 +10,10 @@ import { RegistrationController } from './registration/registration.controller.j
 import { SessionsController } from './sessions/sessions.controller.js';
 import { SessionService } from './sessions/sessions.service.js';
 
-import { LogoutController } from './logout/logout.controller.js';
-
 @Module({
     imports: [AuthJwtModule],
     providers: [JwtAuthGuard, Argon2Service, SessionService, LoginService, RegistrationService],
     exports: [Argon2Service],
-    controllers: [SessionsController, LoginController, LogoutController, RegistrationController],
+    controllers: [SessionsController, LoginController, RegistrationController],
 })
 export class AuthModule {}
