@@ -1,27 +1,49 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService as NestJwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { JwtService as NestJwtService, type JwtSignOptions } from '@nestjs/jwt';
 
-import type { JwtPayload } from './jwt-payload.interface.js';
+import { accessTokenPayloadSchema, type AccessTokenPayload } from './jwt-payload.interface.js';
+
+const ISSUER = 'kajal-api';
+const AUDIENCE = 'kajal-client';
+const ALGORITHM = 'HS256';
 
 @Injectable()
 export class JwtService {
-    constructor(private readonly jwt: NestJwtService) {}
+    private readonly secret: string;
+    private readonly expiresIn: JwtSignOptions['expiresIn'];
 
-    generateAccessToken(payload: JwtPayload): Promise<string> {
-        return this.jwt.signAsync(payload);
+    constructor(
+        private readonly jwt: NestJwtService,
+        config: ConfigService,
+    ) {
+        // Read once so a missing env var fails at boot, not on the first login.
+        this.secret = config.getOrThrow<string>('JWT_ACCESS_SECRET');
+        this.expiresIn = config.getOrThrow<string>(
+            'JWT_ACCESS_EXPIRES_IN',
+        ) as JwtSignOptions['expiresIn'];
     }
 
-    async verifyAccessToken(token: string): Promise<JwtPayload> {
+    generateAccessToken(payload: AccessTokenPayload): Promise<string> {
+        return this.jwt.signAsync(payload, {
+            secret: this.secret,
+            expiresIn: this.expiresIn,
+            issuer: ISSUER,
+            audience: AUDIENCE,
+            algorithm: ALGORITHM,
+        });
+    }
+
+    async verifyAccessToken(token: string): Promise<AccessTokenPayload> {
         try {
-            const payload = await this.jwt.verifyAsync<JwtPayload>(token);
+            const decoded = await this.jwt.verifyAsync<AccessTokenPayload>(token, {
+                secret: this.secret,
+                issuer: ISSUER,
+                audience: AUDIENCE,
+                algorithms: [ALGORITHM],
+            });
 
-            if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
-                throw new UnauthorizedException('Invalid access token');
-            }
-
-            return {
-                sub: payload.sub,
-            };
+            return accessTokenPayloadSchema.parse(decoded);
         } catch {
             throw new UnauthorizedException('Invalid or expired access token');
         }

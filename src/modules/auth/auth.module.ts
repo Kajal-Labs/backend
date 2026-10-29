@@ -7,11 +7,13 @@ import { Argon2Service } from './password/argon2.service.js';
 import { LoginController } from './login/login.controller.js';
 import { RegistrationService } from './registration/registration.service.js';
 import { RegistrationController } from './registration/registration.controller.js';
+import { SessionsController } from './sessions/sessions.controller.js';
+import { SessionService } from './sessions/sessions.service.js';
 
 @Module({
     imports: [AuthJwtModule],
-    providers: [JwtAuthGuard, Argon2Service, LoginService, RegistrationService],
+    providers: [JwtAuthGuard, Argon2Service, SessionService, LoginService, RegistrationService],
     exports: [Argon2Service],
-    controllers: [LoginController, RegistrationController],
+    controllers: [SessionsController, LoginController, RegistrationController],
 })
 export class AuthModule {}
