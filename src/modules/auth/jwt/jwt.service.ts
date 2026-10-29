@@ -7,7 +7,7 @@ import type { JwtPayload } from './jwt-payload.interface.js';
 export class JwtService {
     constructor(private readonly jwt: NestJwtService) {}
 
-    async generateAccessToken(payload: JwtPayload): Promise<string> {
+    generateAccessToken(payload: JwtPayload): Promise<string> {
         return this.jwt.signAsync(payload);
     }
 

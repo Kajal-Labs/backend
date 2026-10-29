@@ -23,6 +23,7 @@ model Session {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
 
   @@index([userId, isActive])
   @@index([expiresAt])
