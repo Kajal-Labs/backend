@@ -14,31 +14,38 @@ export class JwtAuthGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-        const [scheme, token] = request.headers.authorization?.split(' ') ?? [];
+        const match = request.headers.authorization?.match(/^Bearer\s+(\S+)$/i);
 
-        if (scheme?.toLowerCase() !== 'bearer' || !token) {
+        if (!match) {
             throw new UnauthorizedException('Missing access token');
         }
 
-        const payload = await this.jwtService.verifyAccessToken(token);
+        const payload = await this.jwtService.verifyAccessToken(match[1]);
 
-        // Access tokens are bound to a session, so revoking a session
-        // invalidates its token immediately.
         const session = await this.prisma.session.findFirst({
             where: {
                 id: payload.sid,
                 userId: payload.sub,
                 isActive: true,
+                revokedAt: null,
                 expiresAt: { gt: new Date() },
+                user: {
+                    status: 'ACTIVE',
+                },
             },
-            select: { id: true },
+            select: {
+                id: true,
+            },
         });
 
         if (!session) {
             throw new UnauthorizedException('Session is invalid, expired, or revoked');
         }
 
-        request.user = { id: payload.sub, sessionId: payload.sid };
+        request.user = {
+            id: payload.sub,
+            sessionId: session.id,
+        };
 
         return true;
     }
