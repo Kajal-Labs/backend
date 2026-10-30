@@ -1,0 +1,73 @@
+name: Vercel Deployment Notifications
+
+on:
+    deployment_status:
+
+permissions:
+    contents: read
+
+jobs:
+    notify-discord:
+        name: Notify Discord
+        if: >-
+            github.event.deployment_status.state == 'success' ||
+            github.event.deployment_status.state == 'failure' ||
+            github.event.deployment_status.state == 'error'
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Send deployment notification
+              env:
+                  DISCORD_WEBHOOK: ${{ secrets.DISCORD_DEPLOY_WEBHOOK }}
+                  STATUS: ${{ github.event.deployment_status.state }}
+                  ENVIRONMENT: ${{ github.event.deployment.environment }}
+                  DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
+                  REPOSITORY: ${{ github.repository }}
+                  BRANCH: ${{ github.event.deployment.ref }}
+                  COMMIT: ${{ github.event.deployment.sha }}
+              run: |
+                  if [ -z "$DISCORD_WEBHOOK" ]; then
+                    echo "DISCORD_DEPLOY_WEBHOOK secret is missing"
+                    exit 1
+                  fi
+
+                  if [ "$STATUS" = "success" ]; then
+                    TITLE="Deployment Successful"
+                    COLOR=5763719
+                  else
+                    TITLE="Deployment Failed"
+                    COLOR=15548997
+                  fi
+
+                  PAYLOAD=$(jq -n \
+                    --arg title "$TITLE" \
+                    --arg status "$STATUS" \
+                    --arg environment "$ENVIRONMENT" \
+                    --arg url "$DEPLOYMENT_URL" \
+                    --arg repository "$REPOSITORY" \
+                    --arg branch "$BRANCH" \
+                    --arg commit "$COMMIT" \
+                    --argjson color "$COLOR" \
+                    '{
+                      username: "Kajal Labs Deployments",
+                      embeds: [{
+                        title: $title,
+                        color: $color,
+                        fields: [
+                          {name: "Status", value: $status, inline: true},
+                          {name: "Environment", value: $environment, inline: true},
+                          {name: "Repository", value: $repository, inline: true},
+                          {name: "Branch", value: $branch, inline: true},
+                          {name: "Commit", value: ("`" + $commit[0:7] + "`"), inline: true},
+                          {name: "Deployment", value: (if $url == "" then "URL unavailable" else $url end)}
+                        ],
+                        footer: {text: "KAJAL LABS · DEPLOYMENT MONITORING"},
+                        timestamp: (now | todate)
+                      }]
+                    }')
+
+                  curl --fail-with-body --silent --show-error \
+                    -H "Content-Type: application/json" \
+                    -d "$PAYLOAD" \
+                    "$DISCORD_WEBHOOK"
