@@ -66,9 +66,14 @@ export class JwtService {
             algorithm: ALGORITHM,
         });
 
-        const decoded = this.jwt.decode(token);
+        const decoded: unknown = this.jwt.decode(token);
 
-        if (typeof decoded !== 'object' || decoded === null || typeof decoded.exp !== 'number') {
+        if (
+            typeof decoded !== 'object' ||
+            decoded === null ||
+            !('exp' in decoded) ||
+            typeof decoded.exp !== 'number'
+        ) {
             throw new InternalServerErrorException('Unable to determine refresh-token expiration');
         }
 
