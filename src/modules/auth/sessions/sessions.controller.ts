@@ -27,17 +27,24 @@ export class SessionsController {
     @Delete(':sessionId')
     async revokeSession(
         @Req() req: AuthenticatedRequest,
-        @Param(new ZodValidationPipe(sessionIdSchema)) params: SessionIdParams,
+        @Param(new ZodValidationPipe(sessionIdSchema))
+        params: SessionIdParams,
     ) {
         await this.sessionService.revokeSession(req.user.id, params.sessionId);
 
-        return { data: null, message: 'Session revoked successfully.' };
+        return {
+            data: null,
+            message: 'Session revoked successfully.',
+        };
     }
 
     @Delete()
     async revokeAllSessions(@Req() req: AuthenticatedRequest) {
         const revokedCount = await this.sessionService.revokeAllSessions(req.user.id);
 
-        return { data: { revokedCount }, message: 'Sessions revoked successfully.' };
+        return {
+            data: { revokedCount },
+            message: 'Sessions revoked successfully.',
+        };
     }
 }

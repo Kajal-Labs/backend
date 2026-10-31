@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService as NestJwtService, type JwtSignOptions } from '@nestjs/jwt';
 
@@ -12,15 +12,21 @@ const ALGORITHM = 'HS256';
 export class JwtService {
     private readonly secret: string;
     private readonly expiresIn: JwtSignOptions['expiresIn'];
+    private readonly refreshSecret: string;
+    private readonly refreshExpiresIn: JwtSignOptions['expiresIn'];
 
     constructor(
         private readonly jwt: NestJwtService,
         config: ConfigService,
     ) {
-        // Read once so a missing env var fails at boot, not on the first login.
         this.secret = config.getOrThrow<string>('JWT_ACCESS_SECRET');
         this.expiresIn = config.getOrThrow<string>(
             'JWT_ACCESS_EXPIRES_IN',
+        ) as JwtSignOptions['expiresIn'];
+
+        this.refreshSecret = config.getOrThrow<string>('JWT_REFRESH_SECRET');
+        this.refreshExpiresIn = config.getOrThrow<string>(
+            'JWT_REFRESH_EXPIRES_IN',
         ) as JwtSignOptions['expiresIn'];
     }
 
@@ -46,6 +52,49 @@ export class JwtService {
             return accessTokenPayloadSchema.parse(decoded);
         } catch {
             throw new UnauthorizedException('Invalid or expired access token');
+        }
+    }
+
+    async generateRefreshToken(
+        payload: AccessTokenPayload,
+    ): Promise<{ token: string; expiresAt: Date }> {
+        const token = await this.jwt.signAsync(payload, {
+            secret: this.refreshSecret,
+            expiresIn: this.refreshExpiresIn,
+            issuer: ISSUER,
+            audience: AUDIENCE,
+            algorithm: ALGORITHM,
+        });
+
+        const decoded: unknown = this.jwt.decode(token);
+
+        if (
+            typeof decoded !== 'object' ||
+            decoded === null ||
+            !('exp' in decoded) ||
+            typeof decoded.exp !== 'number'
+        ) {
+            throw new InternalServerErrorException('Unable to determine refresh-token expiration');
+        }
+
+        return {
+            token,
+            expiresAt: new Date(decoded.exp * 1000),
+        };
+    }
+
+    async verifyRefreshToken(token: string): Promise<AccessTokenPayload> {
+        try {
+            const decoded = await this.jwt.verifyAsync<AccessTokenPayload>(token, {
+                secret: this.refreshSecret,
+                issuer: ISSUER,
+                audience: AUDIENCE,
+                algorithms: [ALGORITHM],
+            });
+
+            return accessTokenPayloadSchema.parse(decoded);
+        } catch {
+            throw new UnauthorizedException('Invalid or expired refresh token');
         }
     }
 }

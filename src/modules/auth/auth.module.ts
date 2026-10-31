@@ -10,10 +10,20 @@ import { RegistrationController } from './registration/registration.controller.j
 import { SessionsController } from './sessions/sessions.controller.js';
 import { SessionService } from './sessions/sessions.service.js';
 
+import { RefreshController } from './refresh/refresh.controller.js';
+import { RefreshTokenService } from './refresh/refresh-token.service.js';
+
 @Module({
     imports: [AuthJwtModule],
-    providers: [JwtAuthGuard, Argon2Service, SessionService, LoginService, RegistrationService],
+    providers: [
+        JwtAuthGuard,
+        Argon2Service,
+        SessionService,
+        LoginService,
+        RegistrationService,
+        RefreshTokenService,
+    ],
     exports: [Argon2Service],
-    controllers: [SessionsController, LoginController, RegistrationController],
+    controllers: [SessionsController, LoginController, RegistrationController, RefreshController],
 })
 export class AuthModule {}

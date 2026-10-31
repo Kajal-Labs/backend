@@ -32,11 +32,13 @@ export class SessionService {
     }
 
     findActiveSessions(userId: string) {
+        const now = new Date();
+
         return this.prisma.session.findMany({
             where: {
                 userId,
                 isActive: true,
-                expiresAt: { gt: new Date() },
+                expiresAt: { gt: now },
             },
             select: {
                 id: true,
@@ -46,7 +48,9 @@ export class SessionService {
                 expiresAt: true,
                 createdAt: true,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: {
+                createdAt: 'desc',
+            },
         });
     }
 
