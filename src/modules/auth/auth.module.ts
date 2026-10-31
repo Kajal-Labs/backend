@@ -13,6 +13,9 @@ import { SessionService } from './sessions/sessions.service.js';
 import { RefreshController } from './refresh/refresh.controller.js';
 import { RefreshTokenService } from './refresh/refresh-token.service.js';
 
+import { LogoutController } from './logout/logout.controller.js';
+import { LogoutService } from './logout/logout.service.js';
+
 @Module({
     imports: [AuthJwtModule],
     providers: [
@@ -22,8 +25,15 @@ import { RefreshTokenService } from './refresh/refresh-token.service.js';
         LoginService,
         RegistrationService,
         RefreshTokenService,
+        LogoutService,
     ],
     exports: [Argon2Service],
-    controllers: [SessionsController, LoginController, RegistrationController, RefreshController],
+    controllers: [
+        SessionsController,
+        LoginController,
+        RegistrationController,
+        RefreshController,
+        LogoutController,
+    ],
 })
 export class AuthModule {}
