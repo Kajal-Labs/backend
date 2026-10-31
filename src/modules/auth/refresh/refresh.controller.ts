@@ -13,7 +13,7 @@ import { RefreshTokenService } from './refresh-token.service.js';
 
 export const REFRESH_COOKIE = 'refresh_token';
 
-const COOKIE_PATH = '/api/auth';
+const COOKIE_PATH = '/api/v1/auth';
 
 function readRefreshCookie(request: Request): string | undefined {
     const header = request.headers.cookie;

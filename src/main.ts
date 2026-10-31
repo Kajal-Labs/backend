@@ -10,7 +10,7 @@ async function bootstrap() {
 
     app.enableShutdownHooks();
 
-    app.setGlobalPrefix('api', {
+    app.setGlobalPrefix('api/v1', {
         exclude: ['/'],
     });
 
