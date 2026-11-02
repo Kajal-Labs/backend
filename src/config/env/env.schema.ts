@@ -31,6 +31,15 @@ export const envSchema = z.object({
     JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
     SESSION_TTL_SECONDS: z.coerce.number().int().positive(),
+
+    UPSTASH_REDIS_REST_URL: z
+        .string()
+        .url()
+        .refine((value) => value.startsWith('https://'), 'Upstash Redis URL must use HTTPS'),
+
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required'),
+
+    OTP_HASH_SECRET: z.string().min(32, 'OTP_HASH_SECRET must be at least 32 characters'),
 });
 
 export type Env = z.infer<typeof envSchema>;

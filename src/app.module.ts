@@ -7,6 +7,7 @@ import { AppService } from './app.service.js';
 import { validateEnv } from './config/env/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 
+import { RedisModule } from './redis/redis.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 
 @Module({
@@ -16,7 +17,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
             validate: validateEnv,
         }),
         DatabaseModule,
-
+        RedisModule,
         AuthModule,
     ],
     controllers: [AppController],
