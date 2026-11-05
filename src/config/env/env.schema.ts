@@ -11,6 +11,8 @@ export const envSchema = z.object({
 
     TRUST_PROXY: z.coerce.number().int().min(0).default(0),
 
+    CORS_ORIGINS: z.string().default(''),
+
     DATABASE_URL: z
         .string()
         .trim()

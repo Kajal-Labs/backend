@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
 
 import type { Env } from '../config/env/env.schema.js';
-import { PrismaService } from '../database/prisma/prisma.service.js';
-import { RedisService } from '../redis/redis.service.js';
+import { PrismaService } from '../infra/database/prisma/prisma.service.js';
+import { RedisService } from '../infra/redis/redis.service.js';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);

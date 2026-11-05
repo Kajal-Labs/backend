@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { PrismaClient } from '../../../generated/prisma/client.js';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -32,10 +32,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
             this.logger.log('🚀 PostgreSQL database connected successfully! 🐘');
         } catch (error) {
-            this.logger.error(
-                '❌ PostgreSQL database connection failed! 💥',
-                // error instanceof Error ? error.message : String(error),
-            );
+            this.logger.error('❌ PostgreSQL database connection failed! 💥');
             throw error;
         }
     }

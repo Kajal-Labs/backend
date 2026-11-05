@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
@@ -11,9 +9,11 @@ import { HealthController } from './health/health.controller.js';
 import type { Env } from './config/env/env.schema.js';
 import { validateEnv } from './config/env/env.validation.js';
 
-import { RedisModule } from './redis/redis.module.js';
+import { RedisModule } from './infra/redis/redis.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
-import { DatabaseModule } from './database/database.module.js';
+import { DatabaseModule } from './infra/database/database.module.js';
+
+import { createLoggerConfig } from './config/logger/logger.config.js';
 
 @Module({
     imports: [
@@ -25,39 +25,7 @@ import { DatabaseModule } from './database/database.module.js';
 
         LoggerModule.forRootAsync({
             inject: [ConfigService],
-            useFactory: (config: ConfigService<Env, true>) => ({
-                pinoHttp: {
-                    level: config.get('LOG_LEVEL', { infer: true }),
-
-                    genReqId: (req) => {
-                        const incoming = req.headers['x-request-id'];
-
-                        return typeof incoming === 'string' && incoming.length <= 128
-                            ? incoming
-                            : randomUUID();
-                    },
-
-                    redact: [
-                        'req.headers.authorization',
-                        'req.headers.cookie',
-                        'res.headers["set-cookie"]',
-                    ],
-
-                    autoLogging: {
-                        ignore: (req) => req.url === '/health',
-                    },
-
-                    transport:
-                        config.get('NODE_ENV', { infer: true }) === 'development'
-                            ? {
-                                  target: 'pino-pretty',
-                                  options: {
-                                      singleLine: true,
-                                  },
-                              }
-                            : undefined,
-                },
-            }),
+            useFactory: (config: ConfigService<Env, true>) => createLoggerConfig(config),
         }),
 
         DatabaseModule,

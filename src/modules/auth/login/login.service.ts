@@ -5,7 +5,7 @@ import type { LoginInput } from './login.schema.js';
 import { Argon2Service } from '../password/argon2.service.js';
 import { SessionService } from '../sessions/sessions.service.js';
 import { RefreshTokenService } from '../refresh/refresh-token.service.js';
-import { PrismaService } from '../../../database/prisma/prisma.service.js';
+import { PrismaService } from '../../../infra/database/prisma/prisma.service.js';
 import type { RequestMetadata } from '../sessions/session-metadata.util.js';
 
 @Injectable()
