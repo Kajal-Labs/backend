@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { PrismaService } from '../../../database/prisma/prisma.service.js';
 import { JwtService } from '../jwt/jwt.service.js';
+import { PrismaService } from '../../../infra/database/prisma/prisma.service.js';
 import type { AuthenticatedRequest } from './authenticated-request.interface.js';
 
 @Injectable()

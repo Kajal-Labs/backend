@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { PrismaService } from '../../../database/prisma/prisma.service.js';
+import { PrismaService } from '../../../infra/database/prisma/prisma.service.js';
 import { detectDeviceMetadata, type RequestMetadata } from './session-metadata.util.js';
 
 @Injectable()

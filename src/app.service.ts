@@ -1,18 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+import type { Env } from './config/env/env.schema.js';
 
 export interface AppStatus {
-    status: string;
+    status: 'ok';
     service: string;
-    environment: string | undefined;
+    environment: string;
+    message: string;
 }
 
 @Injectable()
 export class AppService {
+    constructor(private readonly config: ConfigService<Env, true>) {}
+
     getStatus(): AppStatus {
         return {
             status: 'ok',
-            service: 'api',
-            environment: process.env.NODE_ENV,
+            service: 'Kajal API',
+            environment: this.config.get('NODE_ENV', { infer: true }),
+            message: 'API is running and ready to accept requests.',
         };
     }
 }

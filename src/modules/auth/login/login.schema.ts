@@ -10,7 +10,14 @@ export const loginSchema = z
             .email('Enter a valid email address')
             .transform((email) => email.toLowerCase()),
 
-        password: z.string().min(1, 'Password is required').max(128, 'Password is too long'),
+        password: z
+            .string({
+                error: (issue) =>
+                    issue.input === undefined
+                        ? 'Password is required'
+                        : 'Password must be a string',
+            })
+            .min(1, 'Password is required'),
     })
     .strict();
 

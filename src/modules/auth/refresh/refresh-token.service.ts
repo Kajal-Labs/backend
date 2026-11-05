@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { JwtService } from '../jwt/jwt.service.js';
-import { PrismaService } from '../../../database/prisma/prisma.service.js';
+import { PrismaService } from '../../../infra/database/prisma/prisma.service.js';
 
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 
