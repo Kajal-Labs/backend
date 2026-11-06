@@ -1,21 +1,45 @@
 import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Redis } from '@upstash/redis';
+import type { ZodType } from 'zod';
 
 import { REDIS_CLIENT } from './redis.constants.js';
-import type { RedisJsonValue } from './redis.types.js';
 
+import { ENV_LABELS } from './redis.constants.js';
+import type { Env } from '../../config/env/env.schema.js';
+
+/**
+ * Low-level Redis access. Every value is stored as a JSON string.
+ * Throws ServiceUnavailableException when Redis is unreachable;
+ * callers (cache, otp, tokens) decide whether to fail open or closed.
+ */
 @Injectable()
 export class RedisService {
     private readonly logger = new Logger(RedisService.name);
+    private readonly prefix: string;
 
     constructor(
-        @Inject(REDIS_CLIENT)
-        private readonly redis: Redis,
-    ) {}
+        @Inject(REDIS_CLIENT) private readonly redis: Redis,
+        config: ConfigService<Env, true>,
+    ) {
+        const appName = config.get('APP_NAME', { infer: true });
+        const env = ENV_LABELS[config.get('NODE_ENV', { infer: true })];
+
+        this.prefix = `${appName}:${env}:`;
+    }
 
     /**
-     * Check Redis connectivity.
+     * Build a namespaced key.
+     * key('otp', 'login', 'a@b.com') -> "myapp:prod:otp:login:a@b.com"
      */
+    key(...parts: string[]): string {
+        if (parts.length === 0 || parts.some((p) => p.length === 0)) {
+            throw new TypeError('Redis key parts must be non-empty.');
+        }
+
+        return this.prefix + parts.join(':');
+    }
+
     async ping(): Promise<boolean> {
         return this.run('PING', async () => {
             const response = await this.redis.ping();
@@ -29,71 +53,52 @@ export class RedisService {
     }
 
     /**
-     * Retrieve a value from Redis.
-     *
-     * T is a compile-time type only.
-     * Validate feature-specific data with Zod when required.
+     * Get a value. Returns null if the key is missing, the data is corrupt,
+     * or it fails the optional Zod schema (stale shape after a deploy = miss).
      */
-    async get<T>(key: string): Promise<T | null> {
+    async get<T>(key: string, schema?: ZodType<T>): Promise<T | null> {
         this.validateKey(key);
 
-        return this.run('GET', () => this.redis.get<T>(key));
+        const raw = await this.run('GET', () => this.redis.get<string>(key));
+
+        return this.parse<T>(key, raw, schema);
     }
 
-    /**
-     * Store a JSON-compatible value.
-     *
-     * TTL is optional and expressed in seconds.
-     */
-    async set<T extends RedisJsonValue>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    /** Store a JSON-serializable value. TTL (seconds) is optional. */
+    async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
         this.validateKey(key);
-        this.validateValue(value);
         this.validateTtl(ttlSeconds);
+
+        const serialized = this.serialize(value);
 
         await this.run('SET', async () => {
             if (ttlSeconds !== undefined) {
-                await this.redis.set(key, value, {
-                    ex: ttlSeconds,
-                });
-
+                await this.redis.set(key, serialized, { ex: ttlSeconds });
                 return;
             }
 
-            await this.redis.set(key, value);
+            await this.redis.set(key, serialized);
         });
     }
 
     /**
-     * Atomically store a value only if the key does not exist.
-     *
-     * Uses Redis SET NX EX.
-     *
-     * Returns true if created, false if the key already exists.
+     * Atomic SET NX EX. Returns true if created, false if the key already exists.
+     * Used for cooldowns and locks.
      */
-    async setIfAbsent<T extends RedisJsonValue>(
-        key: string,
-        value: T,
-        ttlSeconds: number,
-    ): Promise<boolean> {
+    async setIfAbsent(key: string, value: unknown, ttlSeconds: number): Promise<boolean> {
         this.validateKey(key);
-        this.validateValue(value);
         this.validateTtl(ttlSeconds);
 
+        const serialized = this.serialize(value);
+
         return this.run('SET NX', async () => {
-            const result = await this.redis.set(key, value, {
-                ex: ttlSeconds,
-                nx: true,
-            });
+            const result = await this.redis.set(key, serialized, { ex: ttlSeconds, nx: true });
 
             return result === 'OK';
         });
     }
 
-    /**
-     * Delete one or more Redis keys.
-     *
-     * Returns the number of keys deleted.
-     */
+    /** Delete keys. Returns the number of keys deleted. */
     async delete(...keys: string[]): Promise<number> {
         if (keys.length === 0) {
             throw new TypeError('At least one Redis key must be provided.');
@@ -101,49 +106,21 @@ export class RedisService {
 
         keys.forEach((key) => this.validateKey(key));
 
-        return this.run('DELETE', () => this.redis.del(...keys));
+        return this.run('DEL', () => this.redis.del(...keys));
     }
 
-    /**
-     * Atomically retrieve and delete a key.
-     *
-     * Useful for OTPs and one-time verification tokens.
-     *
-     * Returns null if the key does not exist.
-     */
-    async getAndDelete<T>(key: string): Promise<T | null> {
+    /** Atomic GETDEL. Single-use values (tokens). Returns null if missing. */
+    async getAndDelete<T>(key: string, schema?: ZodType<T>): Promise<T | null> {
         this.validateKey(key);
 
-        return this.run('GET_AND_DELETE', async () => {
-            const script = `
-        local value = redis.call('GET', KEYS[1])
+        const raw = await this.run('GETDEL', () => this.redis.getdel<string>(key));
 
-        if value then
-          redis.call('DEL', KEYS[1])
-        end
-
-        return value
-      `;
-
-            const rawValue = await this.redis.eval(script, [key], []);
-
-            if (rawValue === null) {
-                return null;
-            }
-
-            if (typeof rawValue !== 'string') {
-                throw new Error('Unexpected Redis response');
-            }
-
-            return JSON.parse(rawValue) as T;
-        });
+        return this.parse<T>(key, raw, schema);
     }
 
     /**
-     * Run a Lua script atomically.
-     *
-     * Use this for operations requiring multiple Redis commands
-     * to execute as one atomic operation.
+     * Run a Lua script atomically. The result is returned RAW (not parsed):
+     * values written with set() are JSON strings, so parse them if you return one.
      */
     async eval<T>(script: string, keys: string[], args: Array<string | number>): Promise<T> {
         if (script.trim().length === 0) {
@@ -152,55 +129,67 @@ export class RedisService {
 
         keys.forEach((key) => this.validateKey(key));
 
-        return this.run('EVAL', async () => {
-            return await this.redis.eval(script, keys, args);
-        });
+        return this.run('EVAL', () =>
+            this.redis.eval<Array<string | number>, T>(script, keys, args),
+        );
     }
 
-    /**
-     * Validate Redis keys.
-     */
+    private parse<T>(key: string, raw: string | null, schema?: ZodType<T>): T | null {
+        if (raw === null) {
+            return null;
+        }
+
+        let value: unknown;
+
+        try {
+            value = JSON.parse(raw);
+        } catch {
+            this.logger.warn(`Corrupt JSON at key "${key}", treating as missing.`);
+            return null;
+        }
+
+        if (!schema) {
+            return value as T;
+        }
+
+        const result = schema.safeParse(value);
+
+        if (!result.success) {
+            this.logger.warn(`Schema mismatch at key "${key}", treating as missing.`);
+            return null;
+        }
+
+        return result.data;
+    }
+
+    private serialize(value: unknown): string {
+        const serialized = JSON.stringify(value);
+
+        if (serialized === undefined) {
+            throw new TypeError('Redis value must be JSON serializable.');
+        }
+
+        return serialized;
+    }
+
     private validateKey(key: string): void {
         if (typeof key !== 'string' || key.trim().length === 0) {
             throw new TypeError('Redis key must be a non-empty string.');
         }
     }
 
-    /**
-     * Validate TTL in seconds.
-     */
     private validateTtl(ttlSeconds?: number): void {
         if (ttlSeconds !== undefined && (!Number.isSafeInteger(ttlSeconds) || ttlSeconds <= 0)) {
             throw new TypeError('Redis TTL must be a positive integer in seconds.');
         }
     }
 
-    /**
-     * Ensure the value is JSON serializable.
-     */
-    private validateValue(value: RedisJsonValue): void {
-        try {
-            const serialized = JSON.stringify(value);
-
-            if (serialized === undefined) {
-                throw new TypeError('Redis value must be JSON serializable.');
-            }
-        } catch {
-            throw new TypeError('Redis value must be JSON serializable.');
-        }
-    }
-
-    /**
-     * Centralized Redis error handling.
-     */
     private async run<T>(operation: string, fn: () => Promise<T>): Promise<T> {
         try {
             return await fn();
         } catch (error) {
             this.logger.error(
-                `Redis ${operation} failed: ${
-                    error instanceof Error ? error.message : 'unknown error'
-                }`,
+                `Redis ${operation} failed: ${error instanceof Error ? error.message : 'unknown error'}`,
             );
 
             throw new ServiceUnavailableException('Temporary data store is unavailable.');

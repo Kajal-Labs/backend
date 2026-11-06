@@ -5,6 +5,10 @@ const secret = (name: string) => z.string().min(32, `${name} must be at least 32
 export const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production', 'preview']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    APP_NAME: z
+        .string()
+        .regex(/^[a-z0-9-]+$/, 'lowercase letters, digits and dashes only')
+        .default('app'),
     LOG_LEVEL: z
         .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
         .default('info'),
@@ -47,7 +51,9 @@ export const envSchema = z.object({
         .url()
         .refine((value) => value.startsWith('https://'), 'Upstash Redis URL must use HTTPS'),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1, 'UPSTASH_REDIS_REST_TOKEN is required'),
+    REDIS_KEY_PREFIX: z.string().min(1).default('app:'),
 
+    OTP_KEY_SECRET: secret('OTP_KEY_SECRET'),
     OTP_HASH_SECRET: secret('OTP_HASH_SECRET'),
 });
 

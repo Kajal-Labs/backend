@@ -16,8 +16,10 @@ import { RefreshTokenService } from './refresh/refresh-token.service.js';
 import { LogoutController } from './logout/logout.controller.js';
 import { LogoutService } from './logout/logout.service.js';
 
+import { OtpModule } from './otp/otp.module.js';
+
 @Module({
-    imports: [AuthJwtModule],
+    imports: [AuthJwtModule, OtpModule],
     providers: [
         JwtAuthGuard,
         Argon2Service,
