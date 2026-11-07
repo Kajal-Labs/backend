@@ -17,8 +17,9 @@ export class LoginController {
     async login(
         @Body(new ZodValidationPipe(loginSchema))
         body: LoginInput,
+        @Req() request: Request,
     ) {
-        return this.loginService.beginLogin(body);
+        return this.loginService.beginLogin(body, request.ip ?? null);
     }
 
     @Post('verify')

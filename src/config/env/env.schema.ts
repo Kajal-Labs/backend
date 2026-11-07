@@ -55,6 +55,9 @@ export const envSchema = z.object({
 
     OTP_KEY_SECRET: secret('OTP_KEY_SECRET'),
     OTP_HASH_SECRET: secret('OTP_HASH_SECRET'),
+    OTP_REQUEST_USER_LIMIT: z.coerce.number().int().positive().default(3),
+    OTP_REQUEST_IP_LIMIT: z.coerce.number().int().positive().default(10),
+    OTP_VERIFY_IP_LIMIT: z.coerce.number().int().positive().default(20),
 });
 
 export type Env = z.infer<typeof envSchema>;
