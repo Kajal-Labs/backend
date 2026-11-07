@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 
 import { LoginService } from './login.service.js';
 import { loginSchema, type LoginInput } from './login.schema.js';
+import { loginOtpSchema, type LoginOtpInput } from './login-otp.schema.js';
 import { REFRESH_COOKIE } from '../refresh/refresh.controller.js';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
 
@@ -17,9 +18,18 @@ export class LoginController {
         @Body(new ZodValidationPipe(loginSchema))
         body: LoginInput,
         @Req() request: Request,
+    ) {
+        return this.loginService.beginLogin(body, request.ip ?? null);
+    }
+
+    @Post('verify')
+    async verifyOtp(
+        @Body(new ZodValidationPipe(loginOtpSchema))
+        body: LoginOtpInput,
+        @Req() request: Request,
         @Res({ passthrough: true }) response: Response,
     ) {
-        const result = await this.loginService.login(body, {
+        const result = await this.loginService.completeLogin(body, {
             ipAddress: request.ip ?? null,
             userAgent: request.get('user-agent')?.slice(0, MAX_USER_AGENT_LENGTH) ?? null,
         });

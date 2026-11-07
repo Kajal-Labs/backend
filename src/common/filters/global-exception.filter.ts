@@ -28,7 +28,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 message = exceptionResponse;
             } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
                 const body = exceptionResponse as Record<string, unknown>;
-
                 const responseMessage = body.message;
 
                 if (typeof responseMessage === 'string') {
@@ -42,16 +41,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 }
             }
 
+            // Log server-side HTTP exceptions internally.
+            // Do not log request bodies, OTPs, passwords, or tokens.
+            if (status >= 500) {
+                this.logger.error(
+                    `HTTP exception: status=${status}, message=${message}`,
+                    exception.stack,
+                );
+            }
+
             const errorResponse: ApiErrorResponse = {
                 success: false,
                 error: {
-                    code:
-                        exceptionResponse !== null &&
-                        typeof exceptionResponse === 'object' &&
-                        'code' in exceptionResponse &&
-                        typeof exceptionResponse.code === 'string'
-                            ? exceptionResponse.code
-                            : this.getErrorCode(status),
+                    code: this.getErrorCode(status, exceptionResponse),
                     message,
                     ...(details ? { details } : {}),
                 },
@@ -61,6 +63,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             return;
         }
 
+        // Unexpected non-HTTP exceptions.
         this.logger.error(
             'Unhandled exception',
             exception instanceof Error ? exception.stack : String(exception),
@@ -77,7 +80,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         response.status(HttpStatus.INTERNAL_SERVER_ERROR).json(errorResponse);
     }
 
-    private getErrorCode(status: number): string {
+    private getErrorCode(status: number, exceptionResponse: string | object): string {
+        if (
+            typeof exceptionResponse === 'object' &&
+            exceptionResponse !== null &&
+            'code' in exceptionResponse &&
+            typeof exceptionResponse.code === 'string'
+        ) {
+            return exceptionResponse.code;
+        }
+
         const codes: Record<number, string> = {
             [HttpStatus.BAD_REQUEST]: 'BAD_REQUEST',
             [HttpStatus.UNAUTHORIZED]: 'UNAUTHORIZED',
@@ -86,6 +98,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             [HttpStatus.CONFLICT]: 'CONFLICT',
             [HttpStatus.UNPROCESSABLE_ENTITY]: 'UNPROCESSABLE_ENTITY',
             [HttpStatus.TOO_MANY_REQUESTS]: 'TOO_MANY_REQUESTS',
+            [HttpStatus.INTERNAL_SERVER_ERROR]: 'INTERNAL_SERVER_ERROR',
+            [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
         };
 
         return codes[status] ?? 'HTTP_ERROR';

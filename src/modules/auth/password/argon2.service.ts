@@ -11,7 +11,7 @@ export class Argon2Service implements PasswordHasher {
         try {
             return await argon2.hash(password, {
                 type: argon2.argon2id,
-                memoryCost: 19_456, // 19 MiB
+                memoryCost: 19_456,
                 timeCost: 2,
                 parallelism: 1,
             });
