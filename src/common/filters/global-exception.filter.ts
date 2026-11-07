@@ -43,7 +43,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
             // Log server-side HTTP exceptions internally.
             // Do not log request bodies, OTPs, passwords, or tokens.
-            if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+            if (status >= 500) {
                 this.logger.error(
                     `HTTP exception: status=${status}, message=${message}`,
                     exception.stack,

@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { z } from 'zod';
 
 import { RedisService } from './redis.service.js';
